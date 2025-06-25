@@ -1,0 +1,12 @@
+# Core dependencies
+pandas>=2.0.0
+openpyxl>=3.1.0
+PyPDF2>=3.0.0
+python-dotenv>=1.0.0
+
+# Logging and utilities
+structlog>=23.0.0
+
+# Testing (optional for now)
+pytest>=7.0.0
+pytest-cov>=4.0.0
