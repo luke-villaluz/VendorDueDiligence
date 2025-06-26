@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 from src.config.settings import settings
 from src.utils.logger import logger
+import time
 
 class Summarizer:
     """Handles AI-powered document summarization using Ollama."""
@@ -35,7 +36,7 @@ class Summarizer:
             logger.error(f"Failed to connect to Ollama: {e}")
             return False
     
-    def _split_text_for_summarization(self, text: str, max_chunk_size: int = 8000) -> List[str]:
+    def _split_text_for_summarization(self, text: str, max_chunk_size: int = 15000) -> List[str]:
         """
         Split large text into chunks suitable for summarization.
         
@@ -108,7 +109,11 @@ class Summarizer:
                 
                 logger.debug(f"Summarizing chunk {i + 1}/{len(chunks)} ({len(chunk)} chars)")
                 
-                response = requests.post(self.api_url, json=payload, timeout=30)
+                chunk_start_time = time.time()
+                response = requests.post(self.api_url, json=payload, timeout=None)  # No timeout
+                chunk_time = time.time() - chunk_start_time
+                
+                logger.info(f"Chunk {i + 1}/{len(chunks)} completed in {chunk_time:.1f}s")
                 
                 if response.status_code == 200:
                     result = response.json()
@@ -208,7 +213,7 @@ Combined Summary:"""
                 }
             }
             
-            response = requests.post(self.api_url, json=payload, timeout=30)
+            response = requests.post(self.api_url, json=payload, timeout=None)  # No timeout
             
             if response.status_code == 200:
                 result = response.json()
