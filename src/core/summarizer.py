@@ -159,18 +159,19 @@ class Summarizer:
         """
         chunk_info = f" (Part {chunk_num} of {total_chunks})" if total_chunks > 1 else ""
         
-        prompt = f"""You are a vendor due diligence analyst. Analyze the following document{chunk_info} to identify what type of document it is and what information it contains.
+        prompt = f"""You are a vendor due diligence analyst reviewing documents for internal company use. Analyze the following document{chunk_info} and provide a brief, focused summary.
 
 Context: {context if context else "Vendor due diligence document"}
 
 Document text:
 {text}
 
-Please identify:
-1. Document type (e.g., SOC 1 Report, SOC 2 Report, Financial Statement, Cyber Insurance Certificate, etc.)
-2. Report period or date
-3. Key certifications or compliance information
-4. Any notable findings or concerns
+Please provide a concise summary (2-3 sentences maximum) in a single paragraph that:
+1. Clearly identifies what type of document this is and its key purpose
+2. Highlights any critical information, missing items, or follow-up actions that the Xponance team needs to be aware of
+3. Mentions any deadlines, compliance issues, or concerns that require attention
+
+Write this as one flowing paragraph without bullet points or numbered lists. Focus on actionable items and key findings that the Xponance team should follow up on. Be brief but specific.
 
 Document Analysis:"""
         
@@ -255,67 +256,32 @@ Combined Summary:"""
     
     def create_vendor_summary(self, vendor_name: str, document_texts: Dict[str, str]) -> Optional[str]:
         """
-        Create a numbered list summary for all possible document types (Excel columns).
-        If a document is missing, put 'x'. If present, summarize it.
-        Also print debug info for document matching.
+        Create a numbered list summary for all actual documents present.
+        Each document gets a summary, numbered sequentially with proper indentation.
         """
         if not document_texts:
             logger.warning(f"No documents to summarize for {vendor_name}")
             return None
-
-        doc_types = [
-            "DD Response", "SOC 1", "SOC 2", "SOC 3", "COI", "GCM Program", "BRP", "BCP", "GRI", "OISP", "DRP",
-            "Information Security Policy", "Xponance Diverse Opportunities Fund", "SCA", "SIG", "Financial Statement",
-            "Certificates", "Other", "BCP", "GCM", "Info Security", "Technology & Security", "Cybersecurity",
-            "Software Development", "SOC Summary", "SOC Questions"
-        ]
 
         # Debug: print all document filenames
         print(f"[DEBUG] Vendor '{vendor_name}' document files:")
         for doc_name in document_texts:
             print(f"  - {doc_name}")
 
-        # Helper: normalize strings for matching
-        def normalize(s):
-            import re
-            return re.sub(r'[^a-z0-9]', '', s.lower())
-
         summaries = []
-        used_docs = set()
-        for idx, doc_type in enumerate(doc_types, 1):
-            best_match = None
-            best_score = 0
-            norm_type = normalize(doc_type)
-            for doc_name in document_texts:
-                norm_name = normalize(doc_name)
-                # Score: count of doc_type words in doc_name
-                score = sum(1 for word in norm_type.split() if word in norm_name)
-                # Also check if doc_type is a substring
-                if norm_type in norm_name:
-                    score += 2
-                if score > best_score:
-                    best_score = score
-                    best_match = doc_name
-            # Debug: print matching info
-            if best_match and best_score > 0:
-                print(f"[DEBUG] Matched '{doc_type}' to file '{best_match}' (score {best_score})")
-                used_docs.add(best_match)
-                summary = self.summarize_text(document_texts[best_match], f"Vendor: {vendor_name}, Document: {best_match}")
-                if summary:
-                    summaries.append(f"{idx}. {doc_type}:\n{summary.strip()}\n")
-                else:
-                    summaries.append(f"{idx}. {doc_type}:\nx\n")
+        for idx, (doc_name, text) in enumerate(document_texts.items(), 1):
+            print(f"[DEBUG] Summarizing document {idx}: {doc_name}")
+            
+            summary = self.summarize_text(text, f"Vendor: {vendor_name}, Document: {doc_name}")
+            if summary:
+                summaries.append(f"{idx}. {doc_name}:\n    {summary.strip()}\n")
             else:
-                print(f"[DEBUG] No match for '{doc_type}'")
-                summaries.append(f"{idx}. {doc_type}:\nx\n")
+                logger.warning(f"Failed to generate summary for {doc_name}")
 
-        # Debug: print unmatched files
-        unmatched = [doc for doc in document_texts if doc not in used_docs]
-        if unmatched:
-            print(f"[DEBUG] Unmatched files for vendor '{vendor_name}':")
-            for doc in unmatched:
-                print(f"  - {doc}")
+        if not summaries:
+            logger.error(f"No summaries generated for {vendor_name}")
+            return None
 
         final_summary = "\n".join(summaries)
-        logger.info(f"Created vendor summary for {vendor_name} with {len(summaries)} document types")
+        logger.info(f"Created vendor summary for {vendor_name} with {len(summaries)} documents")
         return final_summary
