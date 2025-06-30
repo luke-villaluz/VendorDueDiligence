@@ -63,11 +63,27 @@ class Settings:
         self.save_vendor_summary = os.getenv("SAVE_VENDOR_SUMMARY", "true").lower() == "true"
         self.summary_format = os.getenv("SUMMARY_FORMAT", "markdown")
         
-        # Debug: Show what was loaded
-        print(f"[DEBUG] START_VENDOR from env: {os.getenv('START_VENDOR')}")
-        print(f"[DEBUG] END_VENDOR from env: {os.getenv('END_VENDOR')}")
-        print(f"[DEBUG] settings.start_vendor: {self.start_vendor}, settings.end_vendor: {self.end_vendor}")
-        print(f"[DEBUG] .env path used: {dotenv_path}")
+        # Debug: Show what was loaded for every environment variable
+        print(f"[DEBUG] OLLAMA_MODEL from env: {os.getenv('OLLAMA_MODEL')}, settings.ollama_model: {self.ollama_model}")
+        print(f"[DEBUG] OLLAMA_BASE_URL from env: {os.getenv('OLLAMA_BASE_URL')}, settings.ollama_base_url: {self.ollama_base_url}")
+        print(f"[DEBUG] OLLAMA_TIMEOUT from env: {os.getenv('OLLAMA_TIMEOUT')}, settings.ollama_timeout: {self.ollama_timeout}")
+        print(f"[DEBUG] MAX_FILE_SIZE_MB from env: {os.getenv('MAX_FILE_SIZE_MB')}, settings.max_file_size_mb: {self.max_file_size_mb}")
+        print(f"[DEBUG] MAX_CHUNK_SIZE from env: {os.getenv('MAX_CHUNK_SIZE')}, settings.max_chunk_size: {self.max_chunk_size}")
+        print(f"[DEBUG] TEMPERATURE from env: {os.getenv('TEMPERATURE')}, settings.temperature: {self.temperature}")
+        print(f"[DEBUG] TOP_P from env: {os.getenv('TOP_P')}, settings.top_p: {self.top_p}")
+        print(f"[DEBUG] MAX_TOKENS from env: {os.getenv('MAX_TOKENS')}, settings.max_tokens: {self.max_tokens}")
+        print(f"[DEBUG] BATCH_SIZE from env: {os.getenv('BATCH_SIZE')}, settings.batch_size: {self.batch_size}")
+        print(f"[DEBUG] DELAY_BETWEEN_REQUESTS from env: {os.getenv('DELAY_BETWEEN_REQUESTS')}, settings.delay_between_requests: {self.delay_between_requests}")
+        print(f"[DEBUG] LOG_LEVEL from env: {os.getenv('LOG_LEVEL')}, settings.log_level: {self.log_level}")
+        print(f"[DEBUG] START_VENDOR from env: {os.getenv('START_VENDOR')}, settings.start_vendor: {self.start_vendor}")
+        print(f"[DEBUG] END_VENDOR from env: {os.getenv('END_VENDOR')}, settings.end_vendor: {self.end_vendor}")
+        print(f"[DEBUG] SAVE_INDIVIDUAL_SUMMARIES from env: {os.getenv('SAVE_INDIVIDUAL_SUMMARIES')}, settings.save_individual_summaries: {self.save_individual_summaries}")
+        print(f"[DEBUG] SAVE_VENDOR_SUMMARY from env: {os.getenv('SAVE_VENDOR_SUMMARY')}, settings.save_vendor_summary: {self.save_vendor_summary}")
+        print(f"[DEBUG] SUMMARY_FORMAT from env: {os.getenv('SUMMARY_FORMAT')}, settings.summary_format: {self.summary_format}")
+        print(f"[DEBUG] SHAREPOINT_SITE_URL from env: {os.getenv('SHAREPOINT_SITE_URL')}, settings.sharepoint_site_url: {self.sharepoint_site_url}")
+        print(f"[DEBUG] SHAREPOINT_CLIENT_ID from env: {os.getenv('SHAREPOINT_CLIENT_ID')}, settings.sharepoint_client_id: {self.sharepoint_client_id}")
+        print(f"[DEBUG] SHAREPOINT_CLIENT_SECRET from env: {os.getenv('SHAREPOINT_CLIENT_SECRET')}, settings.sharepoint_client_secret: {self.sharepoint_client_secret}")
+        print(f"[DEBUG] SHAREPOINT_TENANT_ID from env: {os.getenv('SHAREPOINT_TENANT_ID')}, settings.sharepoint_tenant_id: {self.sharepoint_tenant_id}")
         
     def validate_paths(self) -> bool:
         """Validate that required paths exist."""
