@@ -16,6 +16,7 @@ from src.core.summarizer import Summarizer
 from src.core.pdf_processor import PDFProcessor
 from src.utils.file_utils import get_vendor_folders, get_pdf_files
 from src.utils.logger import logger
+from src.config.settings import settings
 
 def count_total_pdfs(vendor_folders):
     """Count total PDFs across all vendors for progress tracking."""
@@ -30,12 +31,14 @@ def main():
         logger.info("🚀 Starting Vendor Due Diligence Automation")
         
         # ===== VENDOR RANGE SETTINGS =====
-        # Set these to limit which vendors to process
-        # Use 0-based indexing: 0 = first vendor, 1 = second vendor, etc.
-        START_VENDOR = 14  # Start from first vendor
-        END_VENDOR = 15    # Process first 5 vendors (0,1,2,3,4)
-        # To process vendors 3-6: START_VENDOR = 3, END_VENDOR = 7
-        # To process vendors 7-10: START_VENDOR = 7, END_VENDOR = 11
+        # Get vendor range from .env file
+        START_VENDOR = settings.start_vendor
+        END_VENDOR = settings.end_vendor
+        
+        if END_VENDOR == 0:
+            logger.info("🎯 Processing ALL vendors")
+        else:
+            logger.info(f"🎯 Processing vendors {START_VENDOR}-{END_VENDOR-1}")
         # =================================
         
         # Initialize components
@@ -81,25 +84,28 @@ def main():
                 pdfs_processed += len(texts)
                 logger.info(f"   📄 Extracted {len(texts)} PDFs ({pdfs_processed}/{total_pdfs} total)")
                 
-                # Generate summaries
-                logger.info(f"   🤖 Generating AI summaries...")
-                analyses = summarizer.summarize_vendor_documents(vendor_folder.name, texts)
-                print(f"DEBUG: {vendor_folder.name} - Summaries generated: {list(analyses.keys())}")
-                if not analyses:
-                    logger.info(f"   ⚠️  No summaries generated for {vendor_folder.name}")
+                # Generate ONE summary for the entire vendor (all documents combined)
+                logger.info(f"   🤖 Generating AI summary for all documents...")
+                vendor_summary = summarizer.create_vendor_summary(vendor_folder.name, texts)
+                print(f"DEBUG: {vendor_folder.name} - Vendor summary generated: {len(vendor_summary) if vendor_summary else 0} chars")
+                if not vendor_summary:
+                    logger.info(f"   ⚠️  No summary generated for {vendor_folder.name}")
                     continue
                 
+                # Create a single analysis entry for the vendor
+                vendor_analyses = {f"{vendor_folder.name}_Summary": vendor_summary}
+                
                 # Update Excel
-                success = updater.update_vendor_documents(vendor_folder, analyses)
+                success = updater.update_vendor_documents(vendor_folder, vendor_analyses)
                 if success:
                     total_processed += 1
-                    total_documents += len(analyses)
+                    total_documents += len(vendor_analyses)
                     elapsed = time.time() - start_time
                     avg_time = elapsed / pdfs_processed if pdfs_processed > 0 else 0
                     remaining_pdfs = total_pdfs - pdfs_processed
                     eta_minutes = (remaining_pdfs * avg_time) / 60
                     
-                    logger.info(f"   ✅ Successfully processed {vendor_folder.name} ({len(analyses)} documents)")
+                    logger.info(f"   ✅ Successfully processed {vendor_folder.name} (1 vendor summary)")
                     logger.info(f"   ⏱️  Progress: {pdfs_processed}/{total_pdfs} PDFs ({pdfs_processed/total_pdfs*100:.1f}%)")
                     logger.info(f"   🕐 ETA: ~{eta_minutes:.1f} minutes remaining")
                 else:
@@ -121,7 +127,7 @@ def main():
         total_time = time.time() - start_time
         logger.info("🎉 Processing complete!")
         logger.info(f"   📊 Processed {total_processed} vendors")
-        logger.info(f"   📄 Analyzed {total_documents} documents")
+        logger.info(f"   📄 Analyzed {total_documents} vendor summaries")
         logger.info(f"   ⏱️  Total time: {total_time/60:.1f} minutes")
         logger.info(f"   📁 Summaries saved to: data/summaries/")
         logger.info(f"   📊 Results saved to: data/2025 Vendors - ResultSheet.xlsx")

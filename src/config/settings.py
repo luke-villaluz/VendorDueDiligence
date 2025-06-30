@@ -6,8 +6,12 @@ from pathlib import Path
 from typing import Dict, Any
 from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
+# Load environment variables with error handling
+try:
+    load_dotenv()
+except Exception as e:
+    print(f"Warning: Could not load .env file: {e}")
+    print("Using default configuration values")
 
 class Settings:
     """Application settings and configuration."""
@@ -30,10 +34,36 @@ class Settings:
         # Ollama configuration
         self.ollama_model = os.getenv("OLLAMA_MODEL", "tinyllama")
         self.ollama_base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+        self.ollama_timeout = int(os.getenv("OLLAMA_TIMEOUT", "300"))
         
         # Processing configuration
         self.max_file_size_mb = int(os.getenv("MAX_FILE_SIZE_MB", "50"))
-        self.supported_extensions = [".pdf"]
+        self.supported_extensions = [".pdf", ".PDF"]
+        
+        # Vendor processing range
+        self.start_vendor = int(os.getenv("START_VENDOR", "0"))
+        self.end_vendor = int(os.getenv("END_VENDOR", "0"))  # 0 means process all
+        
+        # AI processing settings
+        self.max_chunk_size = int(os.getenv("MAX_CHUNK_SIZE", "15000"))
+        self.temperature = float(os.getenv("TEMPERATURE", "0.3"))
+        self.top_p = float(os.getenv("TOP_P", "0.9"))
+        self.max_tokens = int(os.getenv("MAX_TOKENS", "1000"))
+        
+        # Performance settings
+        self.batch_size = int(os.getenv("BATCH_SIZE", "3"))
+        self.delay_between_requests = float(os.getenv("DELAY_BETWEEN_REQUESTS", "1.0"))
+        
+        # SharePoint integration (future)
+        self.sharepoint_site_url = os.getenv("SHAREPOINT_SITE_URL", "")
+        self.sharepoint_client_id = os.getenv("SHAREPOINT_CLIENT_ID", "")
+        self.sharepoint_client_secret = os.getenv("SHAREPOINT_CLIENT_SECRET", "")
+        self.sharepoint_tenant_id = os.getenv("SHAREPOINT_TENANT_ID", "")
+        
+        # Output configuration
+        self.save_individual_summaries = os.getenv("SAVE_INDIVIDUAL_SUMMARIES", "false").lower() == "true"
+        self.save_vendor_summary = os.getenv("SAVE_VENDOR_SUMMARY", "true").lower() == "true"
+        self.summary_format = os.getenv("SUMMARY_FORMAT", "markdown")
         
     def validate_paths(self) -> bool:
         """Validate that required paths exist."""

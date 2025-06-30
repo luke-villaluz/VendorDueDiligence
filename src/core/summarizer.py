@@ -213,22 +213,24 @@ Combined Summary:"""
                 }
             }
             
-            response = requests.post(self.api_url, json=payload, timeout=None)  # No timeout
+            response = requests.post(self.api_url, json=payload, timeout=None)
             
             if response.status_code == 200:
                 result = response.json()
-                return result.get('response', '').strip()
+                combined_summary = result.get('response', '').strip()
+                logger.info(f"Successfully combined {len(summaries)} summaries into {len(combined_summary)} chars")
+                return combined_summary
             else:
                 logger.error(f"Failed to combine summaries: {response.status_code}")
-                return "\n\n".join(summaries)  # Fallback to simple concatenation
+                return combined_text  # Fallback to simple concatenation
                 
         except Exception as e:
             logger.error(f"Failed to combine summaries: {e}")
-            return "\n\n".join(summaries)  # Fallback to simple concatenation
+            return combined_text  # Fallback to simple concatenation
     
     def summarize_vendor_documents(self, vendor_name: str, document_texts: Dict[str, str]) -> Dict[str, str]:
         """
-        Summarize all documents for a vendor.
+        Summarize individual documents for a vendor.
         
         Args:
             vendor_name: Name of the vendor
@@ -237,21 +239,81 @@ Combined Summary:"""
         Returns:
             Dictionary mapping document names to summaries
         """
-        if not document_texts:
-            logger.info(f"No documents to summarize for {vendor_name}")
-            return {}
-        
         summaries = {}
-        context = f"Vendor: {vendor_name}"
         
-        for doc_name, text_content in document_texts.items():
+        for doc_name, text in document_texts.items():
             logger.info(f"Summarizing document: {doc_name}")
-            summary = self.summarize_text(text_content, context)
+            summary = self.summarize_text(text, f"Vendor: {vendor_name}")
             
             if summary:
                 summaries[doc_name] = summary
+                logger.info(f"Generated summary for {doc_name}: {len(summary)} chars")
             else:
-                logger.warning(f"Failed to summarize {doc_name}")
+                logger.warning(f"Failed to generate summary for {doc_name}")
         
-        logger.info(f"Summarized {len(summaries)}/{len(document_texts)} documents for {vendor_name}")
         return summaries
+    
+    def create_vendor_summary(self, vendor_name: str, document_texts: Dict[str, str]) -> Optional[str]:
+        """
+        Create a single comprehensive summary for all vendor documents.
+        
+        Args:
+            vendor_name: Name of the vendor
+            document_texts: Dictionary mapping document names to text content
+            
+        Returns:
+            Single vendor summary or None if failed
+        """
+        if not document_texts:
+            logger.warning(f"No documents to summarize for {vendor_name}")
+            return None
+        
+        # Combine all document texts
+        combined_text = ""
+        for doc_name, text in document_texts.items():
+            combined_text += f"\n\n=== {doc_name} ===\n{text}"
+        
+        logger.info(f"Creating vendor summary for {vendor_name} with {len(document_texts)} documents")
+        
+        # Create a comprehensive vendor analysis prompt
+        prompt = f"""You are a vendor due diligence analyst. Analyze all the following documents for vendor "{vendor_name}" and provide a comprehensive summary.
+
+Documents to analyze:
+{combined_text}
+
+Please provide a comprehensive vendor summary that includes:
+1. Overall vendor compliance status
+2. Document types found (SOC 1, SOC 2, COI, etc.)
+3. Key certifications and their status
+4. Report periods and dates
+5. Any notable findings, concerns, or missing items
+6. Overall risk assessment
+
+Vendor Summary for {vendor_name}:"""
+        
+        try:
+            payload = {
+                "model": self.model,
+                "prompt": prompt,
+                "stream": False,
+                "options": {
+                    "temperature": settings.temperature,
+                    "top_p": settings.top_p,
+                    "max_tokens": settings.max_tokens
+                }
+            }
+            
+            response = requests.post(self.api_url, json=payload, timeout=settings.ollama_timeout)
+            
+            if response.status_code == 200:
+                result = response.json()
+                vendor_summary = result.get('response', '').strip()
+                logger.info(f"Generated vendor summary for {vendor_name}: {len(vendor_summary)} chars")
+                return vendor_summary
+            else:
+                logger.error(f"Failed to generate vendor summary: {response.status_code}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Failed to generate vendor summary for {vendor_name}: {e}")
+            return None
