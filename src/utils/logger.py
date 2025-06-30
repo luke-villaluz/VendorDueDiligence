@@ -44,7 +44,7 @@ def setup_logger(name: str = "vendor_dd", log_file: Optional[Path] = None) -> lo
     if log_file is None:
         log_file = settings.log_file
     
-    file_handler = logging.FileHandler(log_file)
+    file_handler = logging.FileHandler(log_file, encoding='utf-8')
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(detailed_formatter)
     logger.addHandler(file_handler)

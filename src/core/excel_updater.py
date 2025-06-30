@@ -25,6 +25,8 @@ class ExcelUpdater:
         """Load and prepare Excel data."""
         try:
             self.df, self.vendors = load_excel_data()
+            if self.df is None:
+                raise ValueError("Failed to load Excel data - DataFrame is None")
             # Get headers from row 1 (index 1)
             self.headers = self.df.iloc[1].tolist()
             logger.info(f"Loaded Excel with {len(self.vendors)} vendors and {len(self.headers)} columns")
@@ -264,8 +266,9 @@ class ExcelUpdater:
         """
         print(f"DEBUG: Saving summary for {vendor_name} - {document_name}")
         try:
-            # Create vendor subfolder
-            vendor_dir = self.summaries_dir / vendor_name
+            # Create vendor subfolder - strip whitespace to prevent path issues
+            vendor_name_clean = vendor_name.strip()
+            vendor_dir = self.summaries_dir / vendor_name_clean
             vendor_dir.mkdir(exist_ok=True)
             
             # Create filename from document name
@@ -274,7 +277,7 @@ class ExcelUpdater:
             summary_file = vendor_dir / f"{safe_doc_name}_summary.txt"
             
             with open(summary_file, 'w', encoding='utf-8') as f:
-                f.write(f"Vendor: {vendor_name}\n")
+                f.write(f"Vendor: {vendor_name_clean}\n")
                 f.write(f"Document: {document_name}\n")
                 f.write(f"Generated: {pd.Timestamp.now()}\n")
                 f.write("-" * 50 + "\n\n")

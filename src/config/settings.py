@@ -6,12 +6,10 @@ from pathlib import Path
 from typing import Dict, Any
 from dotenv import load_dotenv
 
-# Load environment variables with error handling
-try:
-    load_dotenv()
-except Exception as e:
-    print(f"Warning: Could not load .env file: {e}")
-    print("Using default configuration values")
+# Explicitly load .env from project root
+dotenv_path = Path(__file__).parent.parent.parent / ".env"
+print(f"[DEBUG] Attempting to load .env from: {dotenv_path}")
+load_dotenv(dotenv_path)
 
 class Settings:
     """Application settings and configuration."""
@@ -64,6 +62,12 @@ class Settings:
         self.save_individual_summaries = os.getenv("SAVE_INDIVIDUAL_SUMMARIES", "false").lower() == "true"
         self.save_vendor_summary = os.getenv("SAVE_VENDOR_SUMMARY", "true").lower() == "true"
         self.summary_format = os.getenv("SUMMARY_FORMAT", "markdown")
+        
+        # Debug: Show what was loaded
+        print(f"[DEBUG] START_VENDOR from env: {os.getenv('START_VENDOR')}")
+        print(f"[DEBUG] END_VENDOR from env: {os.getenv('END_VENDOR')}")
+        print(f"[DEBUG] settings.start_vendor: {self.start_vendor}, settings.end_vendor: {self.end_vendor}")
+        print(f"[DEBUG] .env path used: {dotenv_path}")
         
     def validate_paths(self) -> bool:
         """Validate that required paths exist."""
