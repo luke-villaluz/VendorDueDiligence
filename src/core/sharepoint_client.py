@@ -89,17 +89,7 @@ class SharePointClient:
             logger.error(f"SharePoint summary upload failed: {e}")
             return False
     
-    def sync_excel_file(self, excel_file_path: Path) -> bool:
-        """
-        Sync the Excel file to SharePoint.
-        
-        Args:
-            excel_file_path: Path to the Excel file
-            
-        Returns:
-            True if sync successful, False otherwise
-        """
-        return self.upload_file(excel_file_path, "Vendor Due Diligence/Excel Files")
+
     
     def is_configured(self) -> bool:
         """

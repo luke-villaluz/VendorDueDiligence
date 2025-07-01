@@ -8,6 +8,7 @@ from typing import Dict, List, Optional
 from src.config.settings import settings
 from src.utils.logger import logger
 import time
+from datetime import datetime
 
 class Summarizer:
     """Handles AI-powered document summarization using Ollama."""
@@ -159,6 +160,20 @@ class Summarizer:
         """
         chunk_info = f" (Part {chunk_num} of {total_chunks})" if total_chunks > 1 else ""
         
+        # ============================================================================
+        # 🎯 MAIN PROMPT - CHANGE THIS TO MODIFY HOW THE AI ANALYZES DOCUMENTS
+        # ============================================================================
+        # 
+        # This is the prompt that gets sent to the AI model (Ollama).
+        # Modify the text below to change how the AI analyzes and summarizes documents.
+        # 
+        # Available variables you can use:
+        # - {chunk_info}: Shows " (Part X of Y)" if document is split into chunks
+        # - {context}: The vendor name and document context
+        # - {text}: The actual document text to analyze
+        #
+        # ============================================================================
+        
         prompt = f"""You are a vendor due diligence analyst reviewing documents for internal company use. Analyze the following document{chunk_info} and provide a brief, focused summary.
 
 Context: {context if context else "Vendor due diligence document"}
@@ -175,6 +190,10 @@ Write this as one flowing paragraph without bullet points or numbered lists. Foc
 
 Document Analysis:"""
         
+        # ============================================================================
+        # END OF MAIN PROMPT
+        # ============================================================================
+        
         return prompt
     
     def _combine_summaries(self, summaries: List[str]) -> str:
@@ -189,7 +208,18 @@ Document Analysis:"""
         """
         combined_text = "\n\n".join(summaries)
         
-        # Create a prompt to combine the summaries
+        # ============================================================================
+        # 🔗 COMBINE SUMMARIES PROMPT - CHANGE THIS TO MODIFY HOW SUMMARIES ARE COMBINED
+        # ============================================================================
+        # 
+        # This prompt is used when a document is split into multiple chunks and needs to be combined.
+        # Modify the text below to change how multiple summaries are merged into one.
+        #
+        # Available variables:
+        # - {combined_text}: The text containing all the individual summaries to combine
+        #
+        # ============================================================================
+        
         prompt = f"""You are a vendor due diligence analyst. Combine the following summary sections into one cohesive summary:
 
 {combined_text}
@@ -201,6 +231,10 @@ Please provide a unified summary that:
 4. Is concise and professional
 
 Combined Summary:"""
+        
+        # ============================================================================
+        # END OF COMBINE SUMMARIES PROMPT
+        # ============================================================================
         
         try:
             payload = {
@@ -256,8 +290,10 @@ Combined Summary:"""
     
     def create_vendor_summary(self, vendor_name: str, document_texts: Dict[str, str]) -> Optional[str]:
         """
-        Create a numbered list summary for all actual documents present.
-        Each document gets a summary, numbered sequentially with proper indentation.
+        Create a vendor summary in the format requested by management:
+        1. A list of all documents that the vendor submitted
+        2. A brief summary of each document
+        3. A brief overall summary outlining key items that the Xponance team needs to be aware of or to follow-up on
         """
         if not document_texts:
             logger.warning(f"No documents to summarize for {vendor_name}")
@@ -268,20 +304,74 @@ Combined Summary:"""
         for doc_name in document_texts:
             print(f"  - {doc_name}")
 
-        summaries = []
+        # Step 1: Create individual document summaries
+        document_summaries = []
         for idx, (doc_name, text) in enumerate(document_texts.items(), 1):
             print(f"[DEBUG] Summarizing document {idx}: {doc_name}")
             
             summary = self.summarize_text(text, f"Vendor: {vendor_name}, Document: {doc_name}")
             if summary:
-                summaries.append(f"{idx}. {doc_name}:\n    {summary.strip()}\n")
+                document_summaries.append(f"{idx}. {doc_name}:\n    {summary.strip()}")
             else:
                 logger.warning(f"Failed to generate summary for {doc_name}")
 
-        if not summaries:
+        if not document_summaries:
             logger.error(f"No summaries generated for {vendor_name}")
             return None
 
-        final_summary = "\n".join(summaries)
-        logger.info(f"Created vendor summary for {vendor_name} with {len(summaries)} documents")
+        # Step 2: Create overall summary with key follow-up items
+        all_document_text = "\n\n".join([f"Document {i+1}: {doc_name}\n{summary}" 
+                                        for i, (doc_name, summary) in enumerate(zip(document_texts.keys(), document_summaries))])
+        
+        overall_summary_prompt = f"""You are a vendor due diligence analyst reviewing documents for {vendor_name}. 
+
+Based on the following document summaries, provide a brief overall summary (2-3 sentences) outlining key items that the Xponance team needs to be aware of or to follow-up on.
+
+Document Summaries:
+{all_document_text}
+
+Please provide a concise overall summary that:
+1. Identifies the most critical findings or concerns
+2. Highlights any missing information or compliance gaps
+3. Outlines specific follow-up actions the Xponance team should take
+4. Mentions any deadlines, risks, or urgent matters
+
+Overall Summary:"""
+
+        try:
+            payload = {
+                "model": self.model,
+                "prompt": overall_summary_prompt,
+                "stream": False,
+                "options": {
+                    "temperature": 0.3,
+                    "top_p": 0.9,
+                    "max_tokens": 500
+                }
+            }
+            
+            response = requests.post(self.api_url, json=payload, timeout=None)
+            
+            if response.status_code == 200:
+                result = response.json()
+                overall_summary = result.get('response', '').strip()
+            else:
+                logger.error(f"Failed to generate overall summary: {response.status_code}")
+                overall_summary = "Overall assessment: Review required for compliance and risk assessment."
+                
+        except Exception as e:
+            logger.error(f"Failed to generate overall summary: {e}")
+            overall_summary = "Overall assessment: Review required for compliance and risk assessment."
+
+        # Step 3: Combine everything in the requested format
+        final_summary = f"""Vendor Due Diligence Summary - {vendor_name}
+Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+DOCUMENTS SUBMITTED:
+{chr(10).join(document_summaries)}
+
+OVERALL SUMMARY:
+{overall_summary}"""
+
+        logger.info(f"Created vendor summary for {vendor_name} with {len(document_summaries)} documents")
         return final_summary

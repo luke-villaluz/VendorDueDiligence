@@ -2,9 +2,8 @@
 File utility functions for Vendor Due Diligence Automation Tool.
 """
 import os
-import pandas as pd
 from pathlib import Path
-from typing import List, Dict, Optional, Tuple
+from typing import List, Optional
 from src.config.settings import settings
 from src.utils.logger import logger
 
@@ -89,55 +88,3 @@ def create_summary_file(vendor_folder: Path, content: str) -> Path:
     except Exception as e:
         logger.error(f"Failed to create summary file {summary_file}: {e}")
         raise
-
-def load_excel_data() -> Tuple[pd.DataFrame, List[str]]:
-    """
-    Load the Excel file and extract vendor names and column headers.
-    
-    Returns:
-        Tuple of (DataFrame, list of vendor names)
-    """
-    try:
-        # Read Excel file without header
-        df = pd.read_excel(settings.excel_file, header=None)
-        
-        # Get column headers from row 1 (index 1)
-        headers = df.iloc[1].tolist()
-        
-        # Get vendor names from column 0 starting from row 4 (index 3)
-        vendors = df.iloc[3:, 0].dropna().tolist()
-        
-        logger.info(f"Loaded Excel file with {len(vendors)} vendors and {len(headers)} columns")
-        logger.debug(f"Vendors: {vendors[:5]}...")  # Log first 5 vendors
-        
-        return df, vendors
-        
-    except Exception as e:
-        logger.error(f"Failed to load Excel file {settings.excel_file}: {e}")
-        raise
-
-def match_vendor_folder_to_excel(vendor_folder: Path, excel_vendors: List[str]) -> Optional[str]:
-    """
-    Match a vendor folder name to an Excel vendor name.
-    
-    Args:
-        vendor_folder: Path to vendor folder
-        excel_vendors: List of vendor names from Excel
-        
-    Returns:
-        Matched Excel vendor name or None
-    """
-    folder_name = vendor_folder.name
-    
-    # Direct match
-    if folder_name in excel_vendors:
-        return folder_name
-    
-    # Partial matches (handle cases like "SS&C Advent" vs "Advent")
-    for excel_vendor in excel_vendors:
-        if folder_name.lower() in excel_vendor.lower() or excel_vendor.lower() in folder_name.lower():
-            logger.debug(f"Matched folder '{folder_name}' to Excel vendor '{excel_vendor}'")
-            return excel_vendor
-    
-    logger.warning(f"No Excel match found for vendor folder: {folder_name}")
-    return None

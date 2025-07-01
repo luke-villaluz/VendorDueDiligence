@@ -45,3 +45,15 @@ Thumbs.db
 # Logs
 logs/
 *.log
+
+# Temporary processing directories
+temp_processing/
+temp_data/
+temp_*
+
+# Output files
+VendorDD_Results_*.xlsx
+*.tmp
+
+# Windows batch files (optional - uncomment if you don't want to track them)
+# *.bat
