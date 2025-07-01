@@ -15,6 +15,7 @@ import signal
 from pathlib import Path
 import shutil
 import requests
+from datetime import datetime
 
 # Add src to path
 sys.path.append(str(Path(__file__).parent / "src"))
@@ -303,21 +304,27 @@ class VendorDDGUI:
                 self.log_message(f"Generating summary for {vendor_folder.name}...")
                 try:
                     summarizer = Summarizer()
-                    vendor_summary = summarizer.create_vendor_summary(vendor_folder.name, document_texts)
-                    
-                    if vendor_summary:
+                    result = summarizer.create_vendor_summary(vendor_folder.name, document_texts)
+                    if result:
+                        document_summaries, overall_summary = result
                         # Generate PDF report directly (no .txt file)
                         self.log_message(f"Generating PDF report for {vendor_folder.name}...")
                         try:
                             pdf_file = vendor_folder / f"{vendor_folder.name}_Summary_Report.pdf"
-                            pdf_generator.generate_pdf_from_text(vendor_summary, pdf_file, f"{vendor_folder.name} - Vendor Due Diligence Summary")
+                            generated_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                            pdf_generator.generate_pdf_from_summaries(
+                                vendor_folder.name,
+                                document_summaries,
+                                overall_summary,
+                                pdf_file,
+                                generated_date
+                            )
                             self.log_message(f"SUCCESS: PDF report saved to {vendor_folder.name}/{pdf_file.name}")
                             processed_vendors += 1
                         except Exception as e:
                             self.log_message(f"ERROR: Failed to generate PDF for {vendor_folder.name}: {e}")
                     else:
                         self.log_message(f"ERROR: Failed to generate summary for {vendor_folder.name}")
-                    
                 except Exception as e:
                     self.log_message(f"ERROR: Failed to process {vendor_folder.name}: {e}")
                 

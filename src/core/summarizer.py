@@ -4,7 +4,7 @@ AI summarization module for Vendor Due Diligence Automation Tool.
 import requests
 import json
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 from src.config.settings import settings
 from src.utils.logger import logger
 import time
@@ -119,7 +119,11 @@ class Summarizer:
                 if response.status_code == 200:
                     result = response.json()
                     summary = result.get('response', '').strip()
+                    # Post-processing: remove asterisks, Markdown, and stray symbols
                     if summary:
+                        import re
+                        summary = re.sub(r'[\*\_\#\`\>\-\=\[\]\(\)\~]', '', summary)
+                        summary = re.sub(r'\s+', ' ', summary).strip()
                         summaries.append(summary)
                         logger.debug(f"Generated summary for chunk {i + 1}: {len(summary)} chars")
                     else:
@@ -142,7 +146,7 @@ class Summarizer:
         else:
             final_summary = self._combine_summaries(summaries)
         
-        logger.info(f"Successfully summarized {len(text)} chars into {len(final_summary)} chars")
+        logger.info(f"Successfully generated summary: {len(final_summary)} chars")
         return final_summary
     
     def _create_summarization_prompt(self, text: str, context: str, chunk_num: int, total_chunks: int) -> str:
@@ -174,21 +178,12 @@ class Summarizer:
         #
         # ============================================================================
         
-        prompt = f"""You are a vendor due diligence analyst reviewing documents for internal company use. Analyze the following document{chunk_info} and provide a brief, focused summary.
-
-Context: {context if context else "Vendor due diligence document"}
+        prompt = f"""Write a summary for Xponance staff in 2-4 sentences. Use natural, businesslike language as if written by a compliance analyst. Do not introduce the summary, do not mention the filename, and do not use any symbols, asterisks, or formatting. Focus on important findings, context, and any follow-up or recommendations. Write as if briefing a colleague, with no 'AI-speak' or summary statements.
 
 Document text:
 {text}
 
-Please provide a concise summary (2-3 sentences maximum) in a single paragraph that:
-1. Clearly identifies what type of document this is and its key purpose
-2. Highlights any critical information, missing items, or follow-up actions that the Xponance team needs to be aware of
-3. Mentions any deadlines, compliance issues, or concerns that require attention
-
-Write this as one flowing paragraph without bullet points or numbered lists. Focus on actionable items and key findings that the Xponance team should follow up on. Be brief but specific.
-
-Document Analysis:"""
+Summary:"""
         
         # ============================================================================
         # END OF MAIN PROMPT
@@ -288,12 +283,13 @@ Combined Summary:"""
         
         return summaries
     
-    def create_vendor_summary(self, vendor_name: str, document_texts: Dict[str, str]) -> Optional[str]:
+    def create_vendor_summary(self, vendor_name: str, document_texts: Dict[str, str]) -> Optional[Tuple[Dict[str, str], str]]:
         """
         Create a vendor summary in the format requested by management:
-        1. A list of all documents that the vendor submitted
-        2. A brief summary of each document
-        3. A brief overall summary outlining key items that the Xponance team needs to be aware of or to follow-up on
+        1. A mapping of all documents to their summaries
+        2. A brief overall summary outlining key items that the Xponance team needs to be aware of or to follow-up on
+        Returns:
+            Tuple of (document_summaries_dict, overall_summary)
         """
         if not document_texts:
             logger.warning(f"No documents to summarize for {vendor_name}")
@@ -305,13 +301,12 @@ Combined Summary:"""
             print(f"  - {doc_name}")
 
         # Step 1: Create individual document summaries
-        document_summaries = []
+        document_summaries = {}
         for idx, (doc_name, text) in enumerate(document_texts.items(), 1):
             print(f"[DEBUG] Summarizing document {idx}: {doc_name}")
-            
             summary = self.summarize_text(text, f"Vendor: {vendor_name}, Document: {doc_name}")
             if summary:
-                document_summaries.append(f"{idx}. {doc_name}:\n    {summary.strip()}")
+                document_summaries[doc_name] = summary.strip()
             else:
                 logger.warning(f"Failed to generate summary for {doc_name}")
 
@@ -321,22 +316,8 @@ Combined Summary:"""
 
         # Step 2: Create overall summary with key follow-up items
         all_document_text = "\n\n".join([f"Document {i+1}: {doc_name}\n{summary}" 
-                                        for i, (doc_name, summary) in enumerate(zip(document_texts.keys(), document_summaries))])
-        
-        overall_summary_prompt = f"""You are a vendor due diligence analyst reviewing documents for {vendor_name}. 
-
-Based on the following document summaries, provide a brief overall summary (2-3 sentences) outlining key items that the Xponance team needs to be aware of or to follow-up on.
-
-Document Summaries:
-{all_document_text}
-
-Please provide a concise overall summary that:
-1. Identifies the most critical findings or concerns
-2. Highlights any missing information or compliance gaps
-3. Outlines specific follow-up actions the Xponance team should take
-4. Mentions any deadlines, risks, or urgent matters
-
-Overall Summary:"""
+                                        for i, (doc_name, summary) in enumerate(document_summaries.items())])
+        overall_summary_prompt = f"""You are a vendor due diligence analyst reviewing documents for {vendor_name}. \n\nBased on the following document summaries, provide a brief overall summary (2-3 sentences) outlining key items that the Xponance team needs to be aware of or to follow-up on.\n\nDocument Summaries:\n{all_document_text}\n\nPlease provide a concise overall summary that:\n1. Identifies the most critical findings or concerns\n2. Highlights any missing information or compliance gaps\n3. Outlines specific follow-up actions the Xponance team should take\n4. Mentions any deadlines, risks, or urgent matters\n\nOverall Summary:"""
 
         try:
             payload = {
@@ -349,29 +330,16 @@ Overall Summary:"""
                     "max_tokens": 500
                 }
             }
-            
             response = requests.post(self.api_url, json=payload, timeout=None)
-            
             if response.status_code == 200:
                 result = response.json()
                 overall_summary = result.get('response', '').strip()
             else:
                 logger.error(f"Failed to generate overall summary: {response.status_code}")
                 overall_summary = "Overall assessment: Review required for compliance and risk assessment."
-                
         except Exception as e:
             logger.error(f"Failed to generate overall summary: {e}")
             overall_summary = "Overall assessment: Review required for compliance and risk assessment."
 
-        # Step 3: Combine everything in the requested format
-        final_summary = f"""Vendor Due Diligence Summary - {vendor_name}
-Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-
-DOCUMENTS SUBMITTED:
-{chr(10).join(document_summaries)}
-
-OVERALL SUMMARY:
-{overall_summary}"""
-
         logger.info(f"Created vendor summary for {vendor_name} with {len(document_summaries)} documents")
-        return final_summary
+        return document_summaries, overall_summary

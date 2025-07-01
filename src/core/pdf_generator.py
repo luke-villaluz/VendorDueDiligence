@@ -297,6 +297,56 @@ class PDFGenerator:
             logger.error(f"Failed to generate PDF: {e}")
             return None
 
+    def generate_pdf_from_summaries(self, vendor_name: str, document_summaries: dict, overall_summary: str, output_path: Path, generated_date: str = None) -> Optional[Path]:
+        """
+        Generate a PDF report from a mapping of document names to summaries and an overall summary.
+        Args:
+            vendor_name: Name of the vendor
+            document_summaries: Dict of {filename: summary}
+            overall_summary: The overall summary paragraph
+            output_path: Path for the output PDF
+            generated_date: Optional generation date string
+        Returns:
+            Path to the generated PDF file, or None if failed
+        """
+        try:
+            doc = SimpleDocTemplate(
+                str(output_path),
+                pagesize=self.page_size,
+                rightMargin=self.margin,
+                leftMargin=self.margin,
+                topMargin=self.margin,
+                bottomMargin=self.margin
+            )
+            story = []
+            # Title (large, bold, centered)
+            story.append(Paragraph("Vendor Due Diligence Summary Report", self.styles['DocumentTitle']))
+            story.append(Spacer(1, 8))
+            # Vendor and timestamp
+            story.append(Paragraph(f"<b>Vendor:</b> {vendor_name}", self.styles['CustomSubheader']))
+            if generated_date is not None:
+                story.append(Paragraph(f"<b>Generated:</b> {str(generated_date)}", self.styles['MetaInfo']))
+            story.append(Spacer(1, 20))
+            # Numbered list of files as headers, with summary paragraphs
+            for idx, (doc_name, summary) in enumerate(document_summaries.items(), 1):
+                # Numbered, bold, colored header for filename
+                story.append(Paragraph(f"<font size=13 color='#2E5090'><b>{idx}. {doc_name}</b></font>", self.styles['Heading2']))
+                # Clean, justified summary paragraph
+                clean_summary = summary.replace('\n', ' ').replace('\r', ' ').strip()
+                story.append(Paragraph(clean_summary, self.styles['DocumentContent']))
+                story.append(Spacer(1, 16))
+            # Overall summary (optional, at the end)
+            if overall_summary is not None and str(overall_summary).strip():
+                story.append(Spacer(1, 20))
+                story.append(Paragraph("<b>Overall Summary:</b>", self.styles['CustomSubheader']))
+                story.append(Paragraph(str(overall_summary).strip(), self.styles['DocumentContent']))
+            doc.build(story)
+            logger.info(f"Successfully generated PDF: {output_path}")
+            return output_path
+        except Exception as e:
+            logger.error(f"Failed to generate PDF: {e}")
+            return None
+
 
 def convert_summary_to_pdf(summary_file_path: Path) -> Optional[Path]:
     """
