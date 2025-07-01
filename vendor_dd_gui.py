@@ -14,6 +14,7 @@ import subprocess
 import signal
 from pathlib import Path
 import shutil
+import requests
 
 # Add src to path
 sys.path.append(str(Path(__file__).parent / "src"))
@@ -116,34 +117,53 @@ class VendorDDGUI:
         self.log_text.pack(fill=tk.BOTH, expand=True)
         
     def start_ollama(self):
-        """Start Ollama server automatically."""
+        """Start Ollama server automatically and wait until it's ready. On Windows, launch in a new terminal window."""
+        self.log_message("Starting Ollama server...")
+        # Check if Ollama is already running
         try:
-            self.log_message("Starting Ollama server...")
-            # Check if Ollama is already running
-            try:
-                import requests
-                response = requests.get("http://localhost:11434/api/tags", timeout=2)
-                if response.status_code == 200:
-                    self.log_message("Ollama server already running")
-                    return
-            except:
-                pass
-            
-            # Start Ollama server
-            self.ollama_process = subprocess.Popen(
-                ["ollama", "serve"],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                creationflags=subprocess.CREATE_NEW_CONSOLE if os.name == 'nt' else 0
-            )
-            
-            # Wait a moment for Ollama to start
-            time.sleep(3)
-            self.log_message("Ollama server started")
-            
+            response = requests.get("http://localhost:11434/api/tags", timeout=2)
+            if response.status_code == 200:
+                self.log_message("Ollama server already running")
+                return
+        except Exception:
+            pass
+
+        # Start Ollama server
+        try:
+            if os.name == 'nt':
+                # Windows: launch in a new terminal window
+                self.log_message("Launching Ollama in a new terminal window (cmd.exe)...")
+                subprocess.Popen([
+                    'cmd.exe', '/c', 'start', 'Ollama Server', 'cmd.exe', '/k', 'ollama serve'
+                ])
+            else:
+                # Other OS: fallback to previous method
+                self.ollama_process = subprocess.Popen(
+                    ["ollama", "serve"],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE
+                )
+            self.log_message("Waiting for Ollama server to be ready...")
+            # Poll the API endpoint every second for up to 15 seconds
+            max_wait = 15
+            for i in range(max_wait):
+                try:
+                    response = requests.get("http://localhost:11434/api/tags", timeout=2)
+                    if response.status_code == 200:
+                        self.log_message("Ollama server started and ready!")
+                        return
+                except Exception:
+                    pass
+                self.log_message(f"  ...waiting ({i+1}/{max_wait})")
+                time.sleep(1)
+            # If we get here, Ollama did not start in time
+            self.log_message("ERROR: Ollama server did not start within 15 seconds.")
+            self.log_message("Please start Ollama manually with 'ollama serve' and try again.")
+            messagebox.showerror("Ollama Error", "Ollama server did not start in time. Please start it manually with 'ollama serve' and restart the tool.")
         except Exception as e:
             self.log_message(f"Warning: Could not start Ollama automatically: {e}")
             self.log_message("Please start Ollama manually with 'ollama serve'")
+            messagebox.showerror("Ollama Error", f"Could not start Ollama automatically: {e}\nPlease start it manually with 'ollama serve' and restart the tool.")
     
     def stop_ollama(self):
         """Stop Ollama server automatically."""

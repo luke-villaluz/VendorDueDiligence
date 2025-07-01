@@ -111,7 +111,7 @@ class Summarizer:
                 logger.debug(f"Summarizing chunk {i + 1}/{len(chunks)} ({len(chunk)} chars)")
                 
                 chunk_start_time = time.time()
-                response = requests.post(self.api_url, json=payload, timeout=None)  # No timeout
+                response = requests.post(self.api_url, json=payload, timeout=settings.ollama_timeout)
                 chunk_time = time.time() - chunk_start_time
                 
                 logger.info(f"Chunk {i + 1}/{len(chunks)} completed in {chunk_time:.1f}s")
