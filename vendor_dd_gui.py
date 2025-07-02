@@ -32,6 +32,10 @@ class VendorDDGUI:
         self.root = root
         self.root.title("Vendor Due Diligence Tool")
         self.root.geometry("800x600")
+        # Make the window fullscreen
+        self.root.attributes('-fullscreen', True)
+        # Allow exiting fullscreen with Escape
+        self.root.bind('<Escape>', lambda e: self.root.attributes('-fullscreen', False))
         
         self.vendor_folder_path = tk.StringVar()
         self.processing = False
@@ -307,13 +311,22 @@ class VendorDDGUI:
                     result = summarizer.create_vendor_summary(vendor_folder.name, document_texts)
                     if result:
                         document_summaries, overall_summary = result
-                        # Generate PDF report directly (no .txt file)
-                        self.log_message(f"Generating PDF report for {vendor_folder.name}...")
+                        # Clean vendor name for filename (replace underscores with spaces)
+                        clean_vendor_name = vendor_folder.name.replace('_', ' ').strip()
+                        # Remove any existing '* VENDOR SUMMARY.pdf' files in the vendor folder
+                        for old_summary in vendor_folder.glob("* VENDOR SUMMARY.pdf"):
+                            try:
+                                old_summary.unlink()
+                                self.log_message(f"Deleted old summary: {old_summary.name}")
+                            except Exception as e:
+                                self.log_message(f"WARNING: Could not delete old summary {old_summary.name}: {e}")
+                        # Generate PDF report with new naming
+                        self.log_message(f"Generating PDF report for {clean_vendor_name}...")
                         try:
-                            pdf_file = vendor_folder / f"{vendor_folder.name}_Summary_Report.pdf"
+                            pdf_file = vendor_folder / f"{clean_vendor_name} VENDOR SUMMARY.pdf"
                             generated_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                             pdf_generator.generate_pdf_from_summaries(
-                                vendor_folder.name,
+                                clean_vendor_name,
                                 document_summaries,
                                 overall_summary,
                                 pdf_file,
