@@ -127,3 +127,13 @@ After processing, you'll find:
 - Temporary files are automatically cleaned up
 - Original files are never modified (only copied for processing)
 - Ollama server is managed automatically and stops when you close the GUI 
+
+## How to Launch the Tool (No Terminal Window)
+
+1. Open your project folder in File Explorer.
+2. Right-click `run_gui_silent.bat` and select 'Create shortcut'.
+3. Move the shortcut to your desktop.
+4. (Optional) Rename the shortcut to 'Vendor Due Diligence Tool'.
+5. Double-click the shortcut to launch the app in fullscreen mode with no terminal window.
+
+This is the recommended way for all users. You do NOT need to use any other shortcut or batch file. 

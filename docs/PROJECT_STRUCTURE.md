@@ -25,6 +25,7 @@ VendorDueDiligence/
 ├── 📄 vendor_dd_gui.py        # GUI application
 ├── 📄 Run_Vendor_DD.bat       # Windows launcher
 ├── 📄 install.bat             # Installation script
+├── 📄 run_gui_silent.bat      # Robust launcher for GUI (no terminal window)
 └── 📄 Create_Desktop_Shortcut.bat  # Desktop shortcut creator
 ```
 
@@ -224,3 +225,7 @@ tests/
 - Version control for code only
 - Separate backup for vendor data
 - Regular testing of processing pipeline 
+
+## Launching the GUI
+- The recommended way to launch the GUI is to create a desktop shortcut to run_gui_silent.bat.
+- This ensures a fullscreen, terminal-free experience for non-technical users. 

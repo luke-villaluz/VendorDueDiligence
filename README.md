@@ -30,6 +30,18 @@ If you're not a programmer, you can use this tool with just a few clicks:
 
 For detailed instructions, see [docs/USER_GUIDE.md](docs/USER_GUIDE.md)
 
+## 🚀 How to Launch the App (For Non-Technical Users)
+
+After setup, launching the app is easy and does not require any terminal window:
+
+1. **Navigate to your project folder in File Explorer.**
+2. **Right-click `run_gui_silent.bat` and select 'Create shortcut'.**
+3. **Move the shortcut to your desktop.**
+4. (Optional) Rename the shortcut to 'Vendor Due Diligence Tool'.
+5. **Double-click the shortcut to launch the app in fullscreen mode with no terminal window.**
+
+This is the most robust and user-friendly way to launch the tool. You do NOT need to use any other shortcut or batch file.
+
 ## 📁 Project Structure
 
 ```
