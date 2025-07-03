@@ -28,12 +28,15 @@ echo Activating virtual environment...
 call env\Scripts\activate.bat
 
 REM Install requirements if needed
-if not exist "env\Lib\site-packages\openpyxl" (
-    echo Installing required packages...
-    pip install -r config\requirements.txt
-) else (
-    echo Required packages already installed.
-)
+REM if not exist "env\Lib\site-packages\openpyxl" (
+REM     echo Installing required packages...
+REM     pip install -r config\requirements.txt
+REM ) else (
+REM     echo Required packages already installed.
+REM )
+
+REM Instead, always install requirements
+pip install -r config\requirements.txt
 
 REM Check if Ollama is installed
 ollama --version >nul 2>&1
