@@ -52,6 +52,10 @@ class VendorDDGUI:
     def setup_ui(self):
         main_frame = ttk.Frame(self.root, padding="20")
         main_frame.pack(fill=tk.BOTH, expand=True)
+
+        # Add X close button (top-right)
+        close_button = ttk.Button(main_frame, text="✕", width=3, command=self.on_closing)
+        close_button.place(relx=1.0, rely=0.0, anchor="ne")
         
         # Title
         title = ttk.Label(main_frame, text="Vendor Due Diligence Automation", 
@@ -122,13 +126,14 @@ class VendorDDGUI:
         self.log_text.pack(fill=tk.BOTH, expand=True)
         
     def start_ollama(self):
-        """Start Ollama server automatically and wait until it's ready. On Windows, launch in a new terminal window."""
+        self.log_message("[DEBUG] Entered start_ollama")
         self.log_message("Starting Ollama server...")
         # Check if Ollama is already running
         try:
             response = requests.get("http://localhost:11434/api/tags", timeout=2)
             if response.status_code == 200:
                 self.log_message("Ollama server already running")
+                self.log_message(f"[DEBUG] self.ollama_process: {self.ollama_process}")
                 return
         except Exception:
             pass
@@ -136,18 +141,20 @@ class VendorDDGUI:
         # Start Ollama server
         try:
             if os.name == 'nt':
-                # Windows: launch in a new terminal window
-                self.log_message("Launching Ollama in a new terminal window (cmd.exe)...")
+                self.log_message("[DEBUG] Windows detected. Launching Ollama in a new terminal window (cmd.exe)...")
+                self.log_message("[DEBUG] This process will NOT be tracked by self.ollama_process!")
                 subprocess.Popen([
                     'cmd.exe', '/c', 'start', 'Ollama Server', 'cmd.exe', '/k', 'ollama serve'
                 ])
+                self.ollama_process = None
             else:
-                # Other OS: fallback to previous method
+                self.log_message("[DEBUG] Non-Windows OS. Launching Ollama and tracking process handle.")
                 self.ollama_process = subprocess.Popen(
                     ["ollama", "serve"],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE
                 )
+                self.log_message(f"[DEBUG] self.ollama_process: {self.ollama_process}")
             self.log_message("Waiting for Ollama server to be ready...")
             # Poll the API endpoint every second for up to 15 seconds
             max_wait = 15
@@ -161,7 +168,6 @@ class VendorDDGUI:
                     pass
                 self.log_message(f"  ...waiting ({i+1}/{max_wait})")
                 time.sleep(1)
-            # If we get here, Ollama did not start in time
             self.log_message("ERROR: Ollama server did not start within 15 seconds.")
             self.log_message("Please start Ollama manually with 'ollama serve' and try again.")
             messagebox.showerror("Ollama Error", "Ollama server did not start in time. Please start it manually with 'ollama serve' and restart the tool.")
@@ -171,15 +177,31 @@ class VendorDDGUI:
             messagebox.showerror("Ollama Error", f"Could not start Ollama automatically: {e}\nPlease start it manually with 'ollama serve' and restart the tool.")
     
     def stop_ollama(self):
-        """Stop Ollama server automatically."""
+        self.log_message("[DEBUG] Entered stop_ollama")
+        self.log_message(f"[DEBUG] self.ollama_process: {self.ollama_process}")
         if self.ollama_process:
             try:
+                self.log_message("[DEBUG] Attempting to terminate ollama_process...")
                 self.ollama_process.terminate()
                 self.ollama_process.wait(timeout=5)
                 self.log_message("Ollama server stopped")
-            except:
+            except Exception as e:
+                self.log_message(f"[DEBUG] Exception during terminate: {e}")
                 self.ollama_process.kill()
                 self.log_message("Ollama server force stopped")
+        else:
+            if os.name == 'nt':
+                self.log_message("[DEBUG] No ollama_process tracked. Attempting to kill all ollama.exe processes via taskkill...")
+                try:
+                    result = subprocess.run(['taskkill', '/F', '/IM', 'ollama.exe'], capture_output=True, text=True)
+                    if result.returncode == 0:
+                        self.log_message("Ollama server(s) killed via taskkill")
+                    else:
+                        self.log_message(f"taskkill returned code {result.returncode}: {result.stdout} {result.stderr}")
+                except Exception as e:
+                    self.log_message(f"Failed to kill Ollama server(s): {e}")
+            else:
+                self.log_message("[DEBUG] No ollama_process tracked. If on Windows, Ollama will NOT be stopped automatically!")
     
     def browse_vendor_folder(self):
         folder = filedialog.askdirectory(title="Select Vendor Folder")
@@ -366,12 +388,13 @@ class VendorDDGUI:
             self.process_button.config(state="normal")
     
     def on_closing(self):
-        """Handle window closing."""
+        self.log_message("[DEBUG] Entered on_closing (window close event)")
         if self.processing:
             if not messagebox.askokcancel("Quit", "Processing is still running. Do you want to quit anyway?"):
+                self.log_message("[DEBUG] User cancelled quit while processing.")
                 return
-        
         self.stop_ollama()
+        self.log_message("[DEBUG] Destroying root window.")
         self.root.destroy()
 
 def main():

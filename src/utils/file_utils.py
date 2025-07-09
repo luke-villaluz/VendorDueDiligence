@@ -24,20 +24,33 @@ def get_vendor_folders() -> List[Path]:
 
 def get_pdf_files(folder_path: Path) -> List[Path]:
     """
-    Get all PDF files from a folder.
+    Get all PDF files from a folder, excluding tool-generated summary/report PDFs.
     
     Args:
         folder_path: Path to search for PDFs
         
     Returns:
-        List of PDF file paths
+        List of PDF file paths (excluding summary/report PDFs)
     """
     if not folder_path.exists():
         logger.warning(f"Folder does not exist: {folder_path}")
         return []
     
-    pdf_files = list(folder_path.glob("*.pdf"))
-    logger.debug(f"Found {len(pdf_files)} PDF files in {folder_path.name}")
+    # Patterns to exclude (case-insensitive)
+    exclude_patterns = [
+        "VENDOR SUMMARY.pdf",
+        "Summary_Report.pdf",
+        "summary.pdf"
+    ]
+    
+    pdf_files = []
+    for pdf_file in folder_path.glob("*.pdf"):
+        name_lower = pdf_file.name.lower()
+        if any(name_lower.endswith(pattern.lower()) for pattern in exclude_patterns):
+            logger.debug(f"Excluding tool-generated PDF: {pdf_file.name}")
+            continue
+        pdf_files.append(pdf_file)
+    logger.debug(f"Found {len(pdf_files)} PDF files in {folder_path.name} (excluding summaries/reports)")
     return pdf_files
 
 def validate_file_size(file_path: Path, max_size_mb: Optional[int] = None) -> bool:
